@@ -1,0 +1,1 @@
+// Route guard component
