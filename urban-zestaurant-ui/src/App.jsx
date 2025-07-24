@@ -1,17 +1,18 @@
-import React, { useContext } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
-import Tables from './pages/Table';
-import Menu from './pages/Menu';
-import Billing from './pages/Billing';
-import AddUser from './pages/AddUser';
-import './styles/navbar.css'
-import { AuthProvider, AuthContext } from './context/AuthContext';
-import Orders from './pages/Orders';
-import TopNavbar from './components/TopNavbar';
+import { useContext } from 'react';
+import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import SideNavbar from './components/Sidebar';
+import TopNavbar from './components/TopNavbar';
+import { AuthContext, AuthProvider } from './context/AuthContext';
+import AddUser from './pages/AddUser';
+import Billing from './pages/Billing';
+import KDS from './pages/KDS'
+import Dashboard from './pages/Dashboard';
+import Login from './pages/Login';
+import Menu from './pages/Menu';
+import Orders from './pages/Orders';
+import Register from './pages/Register';
+import Tables from './pages/Table';
+import './styles/navbar.css';
 
 const Layout = ({ children }) => {
   return (
@@ -133,6 +134,16 @@ function App() {
             } 
           />
 
+
+            <Route 
+            path="/kds" 
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'CASHIER']}>
+                <KDS />
+              </ProtectedRoute>
+            } 
+          />
+          
           <Route 
             path="/add-user" 
             element={
