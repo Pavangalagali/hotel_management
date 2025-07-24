@@ -16,6 +16,12 @@ const SideNavbar = () => {
             roles: ['ADMIN', 'MANAGER', 'CASHIER']
         },
         {
+            path: '/kds',
+            label: 'Kitchen Display',
+            icon: '🍳',
+            roles: ['ADMIN', 'MANAGER', 'CASHIER']
+        },
+        {
             path: '/orders',
             label: 'Order Line',
             icon: '📋',
