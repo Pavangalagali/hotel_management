@@ -52,13 +52,21 @@ function Orders() {
     // Customer name state
     const [customerName, setCustomerName] = useState('');
     
+    // NEW: Order type state
+    const [selectedOrderType, setSelectedOrderType] = useState('DINEIN');
+    
     // Billing state
     const [showBillingModal, setShowBillingModal] = useState(false);
     const [billData, setBillData] = useState(null);
     const [billingFormData, setBillingFormData] = useState({
         paymentMethod: 'CASH',
-        taxPercent: 10.0
+        taxPercent: 10.0,
+        orderType: 'DINEIN' // NEW: Add order type to billing form
     });
+
+    // NEW: Print modal state
+    const [showPrintModal, setShowPrintModal] = useState(false);
+    const [printBillData, setPrintBillData] = useState(null);
 
     const { user } = useContext(AuthContext);
     const hasRole = (role) => user?.role === role;
@@ -74,6 +82,13 @@ function Orders() {
     useEffect(() => {
         // Force re-render when filter changes
     }, [orderFilter]);
+
+    // NEW: Reset table selection when order type changes
+    useEffect(() => {
+        if (selectedOrderType !== 'DINEIN') {
+            setSelectedTable(null);
+        }
+    }, [selectedOrderType]);
 
     const loadOrders = async () => {
         setLoading(true);
@@ -122,7 +137,7 @@ function Orders() {
             
             await updateOrderStatus(orderId, newStatus);
             
-            // Free table when order is SERVED or CANCELLED
+            // Free table when order is SERVED or CANCELLED (only for dine-in orders)
             if ((newStatus === 'SERVED' || newStatus === 'CANCELLED') && orderToUpdate) {
                 if (orderToUpdate.orderType === 'dinein' && orderToUpdate.tableNumber) {
                     try {
@@ -141,6 +156,11 @@ function Orders() {
             if (newStatus === 'SERVED') {
                 if (orderToUpdate) {
                     setCurrentOrder(orderToUpdate);
+                    // NEW: Set order type in billing form
+                    setBillingFormData(prev => ({
+                        ...prev,
+                        orderType: orderToUpdate.orderType || 'DINEIN'
+                    }));
                     setShowBillingModal(true);
                 }
             }
@@ -244,8 +264,9 @@ function Orders() {
             return;
         }
 
-        if (!selectedTable) {
-            alert('Please select a table');
+        // NEW: Only require table for dine-in orders
+        if (selectedOrderType === 'DINEIN' && !selectedTable) {
+            alert('Please select a table for dine-in orders');
             return;
         }
 
@@ -263,26 +284,29 @@ function Orders() {
                 }));
 
             const orderData = {
-                customerName: customerName.trim(), // Use customer name input
-                orderType: 'DINEIN',
-                tableId: selectedTable.tableId,
+                customerName: customerName.trim(),
+                orderType: selectedOrderType, // NEW: Use selected order type
+                tableId: selectedOrderType === 'DINEIN' ? selectedTable?.tableId : null, // NEW: Only set table for dine-in
                 items: items
             };
 
             const response = await createOrder(orderData);
             setCurrentOrder(response.data);
             
-            // Mark table as occupied (your existing logic)
-            await assignTable({
-                number: selectedTable.tableNumber,
-                status: 'OCCUPIED'
-            });
+            // Mark table as occupied (only for dine-in orders)
+            if (selectedOrderType === 'DINEIN' && selectedTable) {
+                await assignTable({
+                    number: selectedTable.tableNumber,
+                    status: 'OCCUPIED'
+                });
+                loadTables();
+            }
 
             // Reset and reload
             setSelectedItems({});
             setCustomerName('');
+            setSelectedTable(null);
             loadOrders();
-            loadTables();
             
             alert('Order created successfully!');
         } catch (error) {
@@ -299,6 +323,12 @@ function Orders() {
             return;
         }
 
+        // NEW: Only require table for dine-in orders
+        if (selectedOrderType === 'DINEIN' && !selectedTable) {
+            alert('Please select a table for dine-in orders');
+            return;
+        }
+
         try {
             const items = Object.entries(selectedItems)
                 .filter(([_, quantity]) => quantity > 0)
@@ -309,8 +339,8 @@ function Orders() {
 
             const updateData = {
                 customerName: customerName.trim(),
-                orderType: currentOrder.orderType,
-                tableId: selectedTable?.tableId || null,
+                orderType: selectedOrderType, // NEW: Use selected order type
+                tableId: selectedOrderType === 'DINEIN' ? selectedTable?.tableId : null, // NEW: Only set table for dine-in
                 items: items
             };
 
@@ -333,9 +363,16 @@ function Orders() {
             // Set customer name
             setCustomerName(res.data.customerName || '');
             
-            // Find the table for this order
-            const table = tables.find(t => t.tableNumber === order.tableNumber);
-            setSelectedTable(table);
+            // NEW: Set order type
+            setSelectedOrderType(res.data.orderType || 'DINEIN');
+            
+            // Find the table for this order (only for dine-in)
+            if (res.data.orderType === 'DINEIN' && order.tableNumber) {
+                const table = tables.find(t => t.tableNumber === order.tableNumber);
+                setSelectedTable(table);
+            } else {
+                setSelectedTable(null);
+            }
             
             // Set current order items only if order is not served/cancelled
             if (order.orderStatus !== 'SERVED' && order.orderStatus !== 'CANCELLED') {
@@ -365,7 +402,8 @@ function Orders() {
             const billPayload = {
                 orderId: currentOrder.orderId,
                 paymentMethod: billingFormData.paymentMethod,
-                taxPercent: parseFloat(billingFormData.taxPercent)
+                taxPercent: parseFloat(billingFormData.taxPercent),
+                orderType: billingFormData.orderType // NEW: Include order type in API call
             };
 
             const response = await generateBill(billPayload);
@@ -382,13 +420,44 @@ function Orders() {
         }
     };
 
-    
+    // NEW: Print Bill function
+    const handlePrintBill = async () => {
+        if (!currentOrder) {
+            alert('Please select an order first');
+            return;
+        }
+
+        try {
+            console.log(currentOrder);
+            
+            // Check if bill already exists for this order
+            if (currentOrder.orderStatus.toUpperCase() === 'SERVED') {
+                // Try to get existing bill
+                try {
+                    const billResponse = await getBillById(currentOrder.orderId);
+                    console.log(billResponse.data[0]);
+                    
+                    setPrintBillData(billResponse.data[0]);
+                    setShowPrintModal(true);
+                } catch (error) {
+                    // If no bill exists, show message
+                    alert('No bill found for this order. Please generate a bill first.');
+                }
+            } else {
+                alert('Order must be served before printing bill');
+            }
+        } catch (error) {
+            console.error('Error loading bill for printing:', error);
+            alert('Error loading bill data. Please try again.');
+        }
+    };
 
     const resetOrder = () => {
         setCurrentOrder(null);
         setSelectedTable(null);
         setSelectedItems({});
         setCustomerName('');
+        setSelectedOrderType('DINEIN'); // NEW: Reset order type
     };
 
     const getOrderStatusCounts = () => {
@@ -417,8 +486,20 @@ function Orders() {
         setBillData(null);
         setBillingFormData({
             paymentMethod: 'CASH',
-            taxPercent: 10.0
+            taxPercent: 10.0,
+            orderType: 'DINEIN' // NEW: Reset order type
         });
+    };
+
+    // NEW: Close print modal
+    const closePrintModal = () => {
+        setShowPrintModal(false);
+        setPrintBillData(null);
+    };
+
+    // NEW: Handle actual printing
+    const handleActualPrint = () => {
+        window.print();
     };
 
     const formatDateTime = (dateString) => {
@@ -486,7 +567,10 @@ function Orders() {
                             >
                                 <div className="order-header">
                                     <span className="order-number">Order #{order.orderId}</span>
-                                    <span className="table-number">Table {order.tableNumber || 'N/A'}</span>
+                                    <span className="table-number">
+                                        {/* NEW: Show table only for dine-in orders */}
+                                        {order.orderType === 'dinein' ? `Table ${order.tableNumber || 'N/A'}` : order.orderType}
+                                    </span>
                                     {(order.orderStatus === 'SERVED' || order.orderStatus === 'CANCELLED') && (
                                         <span className="locked-indicator" title="Cannot edit completed order">🔒</span>
                                     )}
@@ -629,32 +713,60 @@ function Orders() {
                             disabled={currentOrder && (currentOrder.orderStatus === 'SERVED' || currentOrder.orderStatus === 'CANCELLED')}
                         />
                     </div>
-                    
-                    <div className="table-selector">
-                        <label className="input-label">Select Table</label>
-                        <select 
-                            value={selectedTable?.tableId || ''} 
-                            onChange={(e) => {
-                                const table = tables.find(t => t.tableId === parseInt(e.target.value));
-                                setSelectedTable(table);
-                            }}
-                            className="table-select"
-                            disabled={currentOrder && (currentOrder.orderStatus === 'SERVED' || currentOrder.orderStatus === 'CANCELLED')}
-                        >
-                            <option value="">Select Table</option>
-                            {tables.filter(t => t.status === 'free' || t.tableId === selectedTable?.tableId).map(table => (
-                                <option key={table.tableId} value={table.tableId}>
-                                    Table No #{table.tableNumber}
-                                </option>
+
+                    {/* NEW: Order Type Selector */}
+                    <div className="order-type-selector">
+                        <label className="input-label">Order Type</label>
+                        <div className="order-type-options">
+                            {['DINEIN', 'TAKEOUT', 'DELIVERY'].map(type => (
+                                <button
+                                    key={type}
+                                    className={`order-type-btn ${selectedOrderType === type ? 'active' : ''}`}
+                                    onClick={() => setSelectedOrderType(type)}
+                                    disabled={currentOrder && (currentOrder.orderStatus === 'SERVED' || currentOrder.orderStatus === 'CANCELLED')}
+                                >
+                                    {type === 'DINEIN' ? '🍽️ Dine In' :
+                                     type === 'TAKEOUT' ? '🥡 Take Out' :
+                                     '🚚 Delivery'}
+                                </button>
                             ))}
-                        </select>
+                        </div>
                     </div>
                     
+                    {/* NEW: Conditionally show table selector only for dine-in */}
+                    {selectedOrderType === 'DINEIN' && (
+                        <div className="table-selector">
+                            <label className="input-label">Select Table</label>
+                            <select 
+                                value={selectedTable?.tableId || ''} 
+                                onChange={(e) => {
+                                    const table = tables.find(t => t.tableId === parseInt(e.target.value));
+                                    setSelectedTable(table);
+                                }}
+                                className="table-select"
+                                disabled={currentOrder && (currentOrder.orderStatus === 'SERVED' || currentOrder.orderStatus === 'CANCELLED')}
+                            >
+                                <option value="">Select Table</option>
+                                {tables.filter(t => t.status === 'free' || t.tableId === selectedTable?.tableId).map(table => (
+                                    <option key={table.tableId} value={table.tableId}>
+                                        Table No #{table.tableNumber}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
                     
                     {currentOrder && (
                         <div className="current-order-info">
                             <div className="order-number">Order #{currentOrder.orderId}</div>
-                            <div className="people-count">👥 {selectedTable?.seatingCapacity || 2} People</div>
+                            {/* NEW: Show different info based on order type */}
+                            {selectedOrderType.toUpperCase() === 'DINEIN' ? (
+                                <div className="people-count">👥 {selectedTable?.seatingCapacity || 2} People</div>
+                            ) : (
+                                <div className="order-type-info">
+                                    {selectedOrderType.toUpperCase() === 'TAKEOUT' ? '🥡 Take Out Order' : '🚚 Delivery Order'}
+                                </div>
+                            )}
                             {(currentOrder.orderStatus === 'SERVED' || currentOrder.orderStatus === 'CANCELLED') && (
                                 <div className="readonly-warning">
                                     🔒 This order is {currentOrder.orderStatus.toLowerCase()} and cannot be modified
@@ -714,35 +826,9 @@ function Orders() {
                     </div>
                 </div>
 
-                <div className="payment-methods">
-                    {/* <h3 className="section-title">Payment Method</h3>
-                    <div className="payment-options">
-                        <button 
-                            className={`payment-btn ${billingFormData.paymentMethod === 'CASH' ? 'active' : ''}`}
-                            onClick={() => setBillingFormData(prev => ({...prev, paymentMethod: 'CASH'}))}
-                        >
-                            💵 Cash
-                        </button>
-                        <button 
-                            className={`payment-btn ${billingFormData.paymentMethod === 'CARD' ? 'active' : ''}`}
-                            onClick={() => setBillingFormData(prev => ({...prev, paymentMethod: 'CARD'}))}
-                        >
-                            💳 Card
-                        </button>
-                        <button 
-                            className={`payment-btn ${billingFormData.paymentMethod === 'UPI' ? 'active' : ''}`}
-                            onClick={() => setBillingFormData(prev => ({...prev, paymentMethod: 'UPI'}))}
-                        >
-                            📱 UPI
-                        </button>
-                    </div> */}
-                </div>
-
                 <div className="action-buttons">
-                    <button className="action-btn print-btn"
-                    
-                    >
-                        🖨️ Print
+                    <button className="action-btn print-btn" onClick={handlePrintBill}>
+                        🖨️ Print Bill
                     </button>
                     
                     {currentOrder ? (
@@ -775,7 +861,9 @@ function Orders() {
                         <button 
                             className="action-btn place-order-btn"
                             onClick={handleCreateOrder}
-                            disabled={!customerName.trim() || !selectedTable || Object.keys(selectedItems).filter(id => selectedItems[id] > 0).length === 0}
+                            disabled={!customerName.trim() || 
+                                     (selectedOrderType === 'DINEIN' && !selectedTable) ||
+                                     Object.keys(selectedItems).filter(id => selectedItems[id] > 0).length === 0}
                         >
                             Place Order
                         </button>
@@ -783,7 +871,7 @@ function Orders() {
                 </div>
             </div>
 
-            {/* Billing Modal - Your existing pattern */}
+            {/* Billing Modal - Updated with order type */}
             <Modal isOpen={showBillingModal} onClose={closeBillingModal}>
                 <h3 className="modal-title">💳 Generate Bill</h3>
                 
@@ -801,7 +889,7 @@ function Orders() {
                                     <div>
                                         <strong>Order Type:</strong> {currentOrder.orderType}
                                     </div>
-                                    {currentOrder.tableNumber && (
+                                    {currentOrder.tableNumber && currentOrder.orderType === 'dinein' && (
                                         <div>
                                             <strong>Table:</strong> {currentOrder.tableNumber}
                                         </div>
@@ -823,6 +911,21 @@ function Orders() {
                                 </div>
 
                                 <div className="billing-form">
+                                    {/* NEW: Order Type in billing form */}
+                                    <div className="form-group">
+                                        <label className="form-label">Order Type</label>
+                                        <select
+                                            className="form-input"
+                                            name="orderType"
+                                            value={billingFormData.orderType}
+                                            onChange={handleBillingInputChange}
+                                        >
+                                            <option value="DINEIN">Dine In</option>
+                                            <option value="TAKEOUT">Take Out</option>
+                                            <option value="DELIVERY">Delivery</option>
+                                        </select>
+                                    </div>
+
                                     <div className="form-group">
                                         <label className="form-label">Payment Method</label>
                                         <select
@@ -892,6 +995,10 @@ function Orders() {
                                 <span>#{billData.orderId}</span>
                             </div>
                             <div className="receipt-row">
+                                <span>Order Type:</span>
+                                <span>{billData.orderType}</span>
+                            </div>
+                            <div className="receipt-row">
                                 <span>Payment Method:</span>
                                 <span>{billData.paymentMethod}</span>
                             </div>
@@ -940,6 +1047,95 @@ function Orders() {
                         </div>
                     </div>
                 )}
+            </Modal>
+
+            {/* NEW: Print Bill Modal */}
+            <Modal isOpen={showPrintModal} onClose={closePrintModal}>
+                <div className="print-bill-content">
+                    <h3 className="modal-title">🖨️ Print Bill</h3>
+                    
+                    {printBillData && (
+                        <div className="print-receipt" id="print-area">
+                            <div className="receipt-header">
+                                <h2>Foodies Restaurant</h2>
+                                <p>Bill Receipt</p>
+                                <p>Bill ID: #{printBillData.billId}</p>
+                                <p>Date: {formatDateTime(printBillData.paidAt)}</p>
+                            </div>
+
+                            <div className="receipt-details">
+                                <div className="receipt-row">
+                                    <span>Order ID:</span>
+                                    <span>#{printBillData.orderId}</span>
+                                </div>
+                                <div className="receipt-row">
+                                    <span>Customer:</span>
+                                    <span>{printBillData.customerName || 'N/A'}</span>
+                                </div>
+                                <div className="receipt-row">
+                                    <span>Order Type:</span>
+                                    <span>{printBillData.orderType}</span>
+                                </div>
+                                <div className="receipt-row">
+                                    <span>Payment Method:</span>
+                                    <span>{printBillData.paymentMethod}</span>
+                                </div>
+                                <div className="receipt-row">
+                                    <span>Payment Status:</span>
+                                    <span className="payment-status paid">{printBillData.paymentStatus}</span>
+                                </div>
+                            </div>
+
+                            <div className="receipt-divider">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+
+                            <div className="receipt-items">
+                                <h4>Items Ordered:</h4>
+                                {printBillData.items.map((item, index) => (
+                                    <div key={index} className="receipt-item">
+                                        <div className="item-line">
+                                            <span>{item.item}</span>
+                                            <span>₹{item.total.toFixed(2)}</span>
+                                        </div>
+                                        <div className="item-details">
+                                            <span>{item.quantity} x ₹{item.unitPrice}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="receipt-divider">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+
+                            <div className="receipt-totals">
+                                <div className="receipt-row">
+                                    <span>Subtotal:</span>
+                                    <span>₹{printBillData.subtotal.toFixed(2)}</span>
+                                </div>
+                                <div className="receipt-row">
+                                    <span>Tax:</span>
+                                    <span>₹{printBillData.tax.toFixed(2)}</span>
+                                </div>
+                                <div className="receipt-row total-amount">
+                                    <strong>TOTAL:</strong>
+                                    <strong>₹{printBillData.total.toFixed(2)}</strong>
+                                </div>
+                            </div>
+
+                            <div className="receipt-footer">
+                                <p>Thank you for dining with us!</p>
+                                <p>Visit us again soon!</p>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="modal-buttons">
+                        <button className="btn-cancel" onClick={closePrintModal}>
+                            Cancel
+                        </button>
+                        <button className="btn-primary" onClick={handleActualPrint}>
+                            🖨️ Print
+                        </button>
+                    </div>
+                </div>
             </Modal>
         </div>
     );
