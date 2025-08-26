@@ -28,5 +28,9 @@ public class KdsService {
 	        order.setOrderStatus(newStatus);
 	        return orderRepo.save(order);
 	    }
+	    
+	    public List<OrderEntity> getAllActiveOrders() {
+	        return orderRepo.findAllActive();
+	    }
 	
 }

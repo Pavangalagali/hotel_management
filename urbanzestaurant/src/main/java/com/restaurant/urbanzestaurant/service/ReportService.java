@@ -60,4 +60,27 @@ public class ReportService {
         dto.setTotalTax(tax);
         return dto;
     }
+    
+    public SalesReportDTO getDailyReportActiveOrdersOnly(LocalDate date) {
+        List<Bill> bills = billRepo.findByPaidAtBetweenForActiveOrders(
+            date.atStartOfDay(), date.plusDays(1).atStartOfDay()
+        );
+        return mapToDto(date, bills);
+    }
+
+    public List<SalesReportDTO> getMonthlyReportActiveOrdersOnly(int year, int month) {
+        LocalDate start = LocalDate.of(year, month, 1);
+        LocalDate end = start.plusMonths(1);
+        
+        List<Bill> allBills = billRepo.findByPaidAtBetweenForActiveOrders(
+            start.atStartOfDay(), end.atStartOfDay()
+        );
+
+        return allBills.stream()
+            .collect(Collectors.groupingBy(b -> b.getPaidAt().toLocalDate()))
+            .entrySet().stream()
+            .map(e -> mapToDto(e.getKey(), e.getValue()))
+            .sorted(Comparator.comparing(SalesReportDTO::getDate))
+            .toList();
+    }
 }

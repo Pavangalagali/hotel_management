@@ -24,20 +24,39 @@ import com.restaurant.urbanzestaurant.service.MenuService;
 @RequestMapping("/api/menu")
 public class MenuRestController {
 
-	@Autowired
-    private  MenuService menuService;
+    @Autowired
+    private MenuService menuService;
 
-	@PostMapping("/categories")
+    // Category Endpoints
+    @PostMapping("/categories")
     public ResponseEntity<Void> addCategory(@RequestParam String name) {
         menuService.addCategory(name);
         return ResponseEntity.ok().build();
     }
-	
-	@GetMapping("/categories/all")
+
+    @GetMapping("/categories/all")
     public ResponseEntity<List<MenuCategory>> getAllCategories() {
         return ResponseEntity.ok(menuService.getAllCategories());
     }
 
+    @GetMapping("/categories/all/including-deleted")
+    public ResponseEntity<List<MenuCategory>> getAllCategoriesIncludingDeleted() {
+        return ResponseEntity.ok(menuService.getAllCategoriesIncludingDeleted());
+    }
+
+    @DeleteMapping("/categories/{categoryId}")
+    public ResponseEntity<Void> deleteCategory(@PathVariable Long categoryId) {
+        menuService.softDeleteCategory(categoryId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/categories/{categoryId}/restore")
+    public ResponseEntity<Void> restoreCategory(@PathVariable Long categoryId) {
+        menuService.restoreCategory(categoryId);
+        return ResponseEntity.ok().build();
+    }
+
+    // Menu Item Endpoints
     @PostMapping
     public ResponseEntity<MenuItemResponse> addItem(@RequestBody MenuItemRequest request) {
         return new ResponseEntity<>(menuService.addMenuItem(request), HttpStatus.CREATED);
@@ -50,13 +69,39 @@ public class MenuRestController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteItem(@PathVariable Long id) {
-        menuService.deleteMenuItem(id);
+        menuService.softDeleteMenuItem(id); // Soft delete by default
         return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}/hard")
+    public ResponseEntity<Void> hardDeleteItem(@PathVariable Long id) {
+        try {
+            menuService.hardDeleteMenuItem(id);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @PutMapping("/{id}/restore")
+    public ResponseEntity<Void> restoreItem(@PathVariable Long id) {
+        menuService.restoreMenuItem(id);
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping
     public ResponseEntity<List<MenuItemResponse>> getAllItems() {
         return ResponseEntity.ok(menuService.getAllMenuItems());
+    }
+
+    @GetMapping("/all/including-deleted")
+    public ResponseEntity<List<MenuItemResponse>> getAllItemsIncludingDeleted() {
+        return ResponseEntity.ok(menuService.getAllMenuItemsIncludingDeleted());
+    }
+
+    @GetMapping("/deleted")
+    public ResponseEntity<List<MenuItemResponse>> getDeletedItems() {
+        return ResponseEntity.ok(menuService.getDeletedMenuItems());
     }
 
     @GetMapping("/available/{status}")

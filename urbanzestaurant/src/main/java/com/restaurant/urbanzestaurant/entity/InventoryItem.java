@@ -1,14 +1,10 @@
 package com.restaurant.urbanzestaurant.entity;
 
-
 import java.math.BigDecimal;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import java.time.LocalDateTime;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,8 +14,9 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@SQLDelete(sql = "UPDATE inventory_items SET deleted_at = NOW() WHERE id = ?")
+@Where(clause = "deleted_at IS NULL")
 public class InventoryItem {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -31,8 +28,11 @@ public class InventoryItem {
     private BigDecimal quantity;
 
     @Column(nullable = false)
-    private String unit; // e.g., kg, pcs, liter
+    private String unit;
 
     @Column(nullable = false)
-    private BigDecimal threshold; // Alert when quantity <= threshold
+    private BigDecimal threshold;
+    
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 }

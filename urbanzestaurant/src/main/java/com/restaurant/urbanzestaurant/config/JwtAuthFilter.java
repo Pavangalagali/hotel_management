@@ -43,14 +43,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String username = jwtService.extractUsername(token);
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            User user = userRepo.findByUsername(username).orElse(null);
+            // Use active users only - this will exclude soft deleted users
+            User user = userRepo.findActiveByUsername(username).orElse(null);
             if (user != null && jwtService.isTokenValid(token, user)) {
                 CustomUserDetails userDetails = new CustomUserDetails(user);
 
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails,
                         null,
-                        userDetails.getAuthorities() // ✅ Injecting authorities
+                        userDetails.getAuthorities()
                 );
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);

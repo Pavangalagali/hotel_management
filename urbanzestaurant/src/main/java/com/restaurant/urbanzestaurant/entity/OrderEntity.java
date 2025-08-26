@@ -1,17 +1,9 @@
 package com.restaurant.urbanzestaurant.entity;
 
 import java.time.LocalDateTime;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -21,19 +13,20 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@SQLDelete(sql = "UPDATE orders SET deleted_at = NOW() WHERE order_id = ?")
+@Where(clause = "deleted_at IS NULL")
 public class OrderEntity {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long orderId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private OrderType orderType; // dinein, takeout, delivery
+    private OrderType orderType;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private OrderStatus orderStatus; // pending, preparing, served, cancelled
+    private OrderStatus orderStatus;
 
     @Column
     private String customerName;
@@ -44,6 +37,9 @@ public class OrderEntity {
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+    
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     public enum OrderType {
         DINEIN, TAKEOUT, DELIVERY

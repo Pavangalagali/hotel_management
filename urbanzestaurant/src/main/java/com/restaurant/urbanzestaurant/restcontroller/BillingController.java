@@ -1,6 +1,5 @@
 package com.restaurant.urbanzestaurant.restcontroller;
 
-
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,17 +20,23 @@ import com.restaurant.urbanzestaurant.service.BillingService;
 @RequestMapping("/api/billing")
 public class BillingController {
 
-	@Autowired
-    private  BillingService billingService;
+    @Autowired
+    private BillingService billingService;
 
     @PostMapping("/generate")
     public ResponseEntity<BillResponse> generateBill(@RequestBody BillRequest request) {
         return new ResponseEntity<>(billingService.generateBill(request), HttpStatus.CREATED);
     }
-    
+
     @GetMapping("/all")
     public ResponseEntity<List<BillResponse>> getAllBills() {
         List<BillResponse> bills = billingService.getAllBills();
+        return ResponseEntity.ok(bills);
+    }
+
+    @GetMapping("/active-orders")
+    public ResponseEntity<List<BillResponse>> getBillsForActiveOrders() {
+        List<BillResponse> bills = billingService.getBillsForActiveOrders();
         return ResponseEntity.ok(bills);
     }
 
@@ -40,5 +45,4 @@ public class BillingController {
         List<BillResponse> bills = billingService.getBillsByOrderId(orderId);
         return ResponseEntity.ok(bills);
     }
-
 }

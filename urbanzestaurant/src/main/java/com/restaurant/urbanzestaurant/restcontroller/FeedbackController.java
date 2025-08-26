@@ -19,8 +19,8 @@ import com.restaurant.urbanzestaurant.service.FeedbackService;
 @RequestMapping("/api/feedback")
 public class FeedbackController {
 
-	@Autowired
-    private  FeedbackService feedbackService;
+    @Autowired
+    private FeedbackService feedbackService;
 
     @PostMapping("/submit")
     public ResponseEntity<FeedbackResponse> submit(@RequestBody FeedbackRequest request) {
@@ -30,6 +30,11 @@ public class FeedbackController {
     @GetMapping("/all")
     public ResponseEntity<List<FeedbackResponse>> all() {
         return ResponseEntity.ok(feedbackService.getAllFeedback());
+    }
+
+    @GetMapping("/active-orders")
+    public ResponseEntity<List<FeedbackResponse>> allForActiveOrders() {
+        return ResponseEntity.ok(feedbackService.getAllFeedbackForActiveOrders());
     }
 
     @GetMapping("/order/{orderId}")

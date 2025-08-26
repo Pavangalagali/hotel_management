@@ -42,24 +42,24 @@ public class SecurityConfiguration {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf( csrf ->  csrf.disable())
             .authorizeHttpRequests(auth -> auth
-            		.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-            		 .requestMatchers("/api/auth/**").permitAll()
-                     .requestMatchers("/api/inventory/**").hasAnyAuthority("ADMIN", "MANAGER")
-                     .requestMatchers("/api/billing/**").hasAnyAuthority("ADMIN","CASHIER", "MANAGER")
-                     .requestMatchers("/api/menu/**").hasAnyAuthority("ADMIN", "MANAGER")
-                     .requestMatchers("/api/orders/**").hasAnyAuthority("ADMIN", "MANAGER", "CASHIER")
-                     .requestMatchers("/api/tables/**").hasAnyAuthority("ADMIN", "MANAGER", "CASHIER")
-                     .requestMatchers("/api/feedback/**").hasAnyAuthority("MANAGER", "CASHIER")
-                     .requestMatchers("/api/reports/**").hasAnyAuthority("MANAGER", "ADMIN")
-                     .requestMatchers("/api/kds/**").hasAnyAuthority("MANAGER", "ADMIN")
-                     .requestMatchers(
-                             "/swagger-ui/**",
-                             "/swagger-ui.html",
-                             "/api-docs/**",
-                             "/v3/api-docs/**",
-                             "/swagger-resources/**",
-                             "/webjars/**"
-                         ).permitAll()
+                    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                    .requestMatchers("/api/auth/**").permitAll()
+                    .requestMatchers("/api/inventory/**").hasAnyAuthority("ADMIN", "MANAGER")
+                    .requestMatchers("/api/billing/**").hasAnyAuthority("ADMIN","CASHIER", "MANAGER")
+                    .requestMatchers("/api/menu/**").hasAnyAuthority("ADMIN", "MANAGER")
+                    .requestMatchers("/api/orders/**").hasAnyAuthority("ADMIN", "MANAGER", "CASHIER")
+                    .requestMatchers("/api/tables/**").hasAnyAuthority("ADMIN", "MANAGER", "CASHIER")
+                    .requestMatchers("/api/feedback/**").hasAnyAuthority("MANAGER", "CASHIER")
+                    .requestMatchers("/api/reports/**").hasAnyAuthority("MANAGER", "ADMIN")
+                    .requestMatchers("/api/kds/**").hasAnyAuthority("MANAGER", "ADMIN")
+                    .requestMatchers(
+                            "/swagger-ui/**",
+                            "/swagger-ui.html",
+                            "/api-docs/**",
+                            "/v3/api-docs/**",
+                            "/swagger-resources/**",
+                            "/webjars/**"
+                        ).permitAll()
                 .anyRequest().authenticated()
             )
             .authenticationProvider(daoAuthProvider())
@@ -72,9 +72,10 @@ public class SecurityConfiguration {
     @Bean
     public DaoAuthenticationProvider daoAuthProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(username -> userRepo.findByUsername(username)
+        // Use active users only for authentication
+        provider.setUserDetailsService(username -> userRepo.findActiveByUsername(username)
                 .map(CustomUserDetails::new)
-                .orElseThrow(() -> new RuntimeException("User not found")));
+                .orElseThrow(() -> new RuntimeException("User not found or deactivated")));
         provider.setPasswordEncoder(passwordEncoder());
         return provider;
     }
@@ -93,14 +94,14 @@ public class SecurityConfiguration {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-    	 CorsConfiguration config = new CorsConfiguration();
-    	    config.setAllowedOriginPatterns(List.of("http://localhost:3000")); // ✅ DO NOT USE allowedOrigins(*)
-    	    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-    	    config.setAllowedHeaders(List.of("*"));
-    	    config.setAllowCredentials(true); // ✅ This REQUIRES real origins
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOriginPatterns(List.of("http://localhost:3000","http://localhost:3001"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setAllowCredentials(true);
 
-    	    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-    	    source.registerCorsConfiguration("/**", config);
-    	    return source;
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
     }
 }

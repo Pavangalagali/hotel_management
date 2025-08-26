@@ -2,6 +2,7 @@ package com.restaurant.urbanzestaurant.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,12 @@ public class FeedbackService {
 	@Autowired
 	private  OrderRepository orderRepo;
 
+	public List<FeedbackResponse> getAllFeedbackForActiveOrders() {
+	    return feedbackRepo.findAllForActiveOrders().stream()
+	            .map(this::mapToDto)
+	            .collect(Collectors.toList());
+	}
+	
     public FeedbackResponse submitFeedback(FeedbackRequest request) {
         if (feedbackRepo.findByOrder_OrderId(request.getOrderId()).isPresent()) {
             throw new RuntimeException("Feedback already submitted for this order.");

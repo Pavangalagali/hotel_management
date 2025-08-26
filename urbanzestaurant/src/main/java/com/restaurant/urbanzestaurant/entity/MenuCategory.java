@@ -1,11 +1,9 @@
 package com.restaurant.urbanzestaurant.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import java.time.LocalDateTime;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -15,6 +13,8 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@SQLDelete(sql = "UPDATE menu_categories SET deleted_at = NOW() WHERE category_id = ?")
+@Where(clause = "deleted_at IS NULL")
 public class MenuCategory {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -22,4 +22,7 @@ public class MenuCategory {
 
     @Column(unique = true, nullable = false)
     private String categoryName;
+    
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 }

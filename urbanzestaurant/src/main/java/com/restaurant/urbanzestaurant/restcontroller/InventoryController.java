@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,8 +23,8 @@ import com.restaurant.urbanzestaurant.service.InventoryService;
 @RequestMapping("/api/inventory")
 public class InventoryController {
 
-	@Autowired
-    private  InventoryService service;
+    @Autowired
+    private InventoryService service;
 
     @PostMapping
     public ResponseEntity<InventoryResponse> addItem(@RequestBody InventoryRequest request) {
@@ -35,6 +36,16 @@ public class InventoryController {
         return ResponseEntity.ok(service.getAll());
     }
 
+    @GetMapping("/all/including-deleted")
+    public ResponseEntity<List<InventoryResponse>> getAllIncludingDeleted() {
+        return ResponseEntity.ok(service.getAllIncludingDeleted());
+    }
+
+    @GetMapping("/deleted")
+    public ResponseEntity<List<InventoryResponse>> getDeletedItems() {
+        return ResponseEntity.ok(service.getDeletedItems());
+    }
+
     @GetMapping("/low-stock")
     public ResponseEntity<List<InventoryResponse>> getLowStockItems() {
         return ResponseEntity.ok(service.getLowStockItems());
@@ -42,8 +53,20 @@ public class InventoryController {
 
     @PutMapping("/{id}/quantity/{action}")
     public ResponseEntity<InventoryResponse> updateQuantity(@PathVariable Long id,
-    														@PathVariable String action,
-                                                            @RequestBody InventoryUpdateRequest request) {
-        return ResponseEntity.ok(service.updateQuantity(id, request,action));
+                                                           @PathVariable String action,
+                                                           @RequestBody InventoryUpdateRequest request) {
+        return ResponseEntity.ok(service.updateQuantity(id, request, action));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteItem(@PathVariable Long id) {
+        service.softDeleteItem(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/restore")
+    public ResponseEntity<Void> restoreItem(@PathVariable Long id) {
+        service.restoreItem(id);
+        return ResponseEntity.ok().build();
     }
 }

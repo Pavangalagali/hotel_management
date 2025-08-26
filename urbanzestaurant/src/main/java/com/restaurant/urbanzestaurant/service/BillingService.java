@@ -116,4 +116,10 @@ public class BillingService {
 
         return response;
     }
+    
+    public List<BillResponse> getBillsForActiveOrders() {
+        return billRepo.findAllForActiveOrders().stream()
+                .map(this::mapToDto)
+                .collect(Collectors.toList());
+    }
 }

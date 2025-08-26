@@ -2,15 +2,7 @@ package com.restaurant.urbanzestaurant.entity;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -20,8 +12,8 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+// Note: Bills usually should NOT be soft deleted for compliance/audit reasons
 public class Bill {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long billId;
@@ -43,8 +35,12 @@ public class Bill {
     private String paymentMethod;
 
     @Column(nullable = false)
-    private String paymentStatus; // e.g. PAID
+    private String paymentStatus;
 
     @Column(nullable = false)
     private LocalDateTime paidAt;
+    
+    // Optional: Add if you really need to soft delete bills
+    // @Column(name = "deleted_at")
+    // private LocalDateTime deletedAt;
 }

@@ -1,6 +1,5 @@
 package com.restaurant.urbanzestaurant.restcontroller;
 
-
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +25,11 @@ public class KdsController {
     @GetMapping("/pending")
     public ResponseEntity<List<OrderEntity>> getPendingOrders() {
         return ResponseEntity.ok(kdsService.getPendingOrders());
+    }
+
+    @GetMapping("/all-active")
+    public ResponseEntity<List<OrderEntity>> getAllActiveOrders() {
+        return ResponseEntity.ok(kdsService.getAllActiveOrders());
     }
 
     @PutMapping("/update-status/{orderId}")

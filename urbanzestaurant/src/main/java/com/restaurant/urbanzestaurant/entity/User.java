@@ -1,6 +1,11 @@
 package com.restaurant.urbanzestaurant.entity;
 
 
+import java.time.LocalDateTime;
+
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
+
 import com.restaurant.urbanzestaurant.enums.Role;
 
 import jakarta.persistence.Column;
@@ -20,8 +25,9 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@SQLDelete(sql = "UPDATE users SET deleted_at = NOW() WHERE id = ?")
+@Where(clause = "deleted_at IS NULL")
 public class User {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -30,10 +36,12 @@ public class User {
     private String username;
 
     @Column(nullable = false)
-    private String password; // Stored hashed
+    private String password;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
+    
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 }
-
