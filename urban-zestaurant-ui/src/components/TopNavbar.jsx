@@ -26,17 +26,7 @@ const TopNavbar = () => {
                     <span className="top-brand-text">UrbanZest</span>
                 </Link>
 
-                {/* Search Bar */}
-                <div className="top-search-section">
-                    <div className="top-search-bar">
-                        <span className="top-search-icon">🔍</span>
-                        <input 
-                            type="text" 
-                            placeholder="Search..." 
-                            className="top-search-input"
-                        />
-                    </div>
-                </div>
+              
 
                 {/* User Section */}
                 <div className="top-user-section">
